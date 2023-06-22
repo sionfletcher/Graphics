@@ -217,7 +217,10 @@ namespace UnityEngine.Rendering.Universal
         /// <summary>
         /// Use this to produce a quarter-resolution image with bi-linear filtering.
         /// </summary>
-        _4xBilinear
+        _4xBilinear,
+
+        _2xDual,
+        _4xDual
     }
 
     internal enum DefaultMaterialType
