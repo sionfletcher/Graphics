@@ -1053,6 +1053,7 @@ namespace UnityEngine.Rendering.Universal
                 // We need to migrate this data to renderer. For now, we query the method in the active asset.
                 Downsampling downsamplingMethod = UniversalRenderPipeline.asset.opaqueDownsampling;
                 var descriptor = cameraTargetDescriptor;
+                descriptor.colorFormat = RenderTextureFormat.RGB565;
                 CopyColorPass.ConfigureDescriptor(downsamplingMethod, ref descriptor, out var filterMode);
 
                 RenderingUtils.ReAllocateIfNeeded(ref m_OpaqueColor, descriptor, filterMode, TextureWrapMode.Clamp, name: "_CameraOpaqueTexture");
