@@ -440,6 +440,7 @@ namespace UnityEngine.Rendering.Universal
         [SerializeField] bool m_RequireDepthTexture = false;
         [SerializeField] bool m_RequireOpaqueTexture = false;
         [SerializeField] Downsampling m_OpaqueDownsampling = Downsampling._2xBilinear;
+        [SerializeField] private RenderTextureFormat m_OpaqueDownsampleTextureFormat = RenderTextureFormat.Default;
         [SerializeField] bool m_SupportsTerrainHoles = true;
 
         // Quality settings
@@ -1028,6 +1029,8 @@ namespace UnityEngine.Rendering.Universal
         {
             get { return m_OpaqueDownsampling; }
         }
+
+        public RenderTextureFormat opaqueDownsampleTextureFormat => m_OpaqueDownsampleTextureFormat;
 
         /// <summary>
         /// This settings controls if the asset <c>UniversalRenderPipelineAsset</c> supports terrain holes.
