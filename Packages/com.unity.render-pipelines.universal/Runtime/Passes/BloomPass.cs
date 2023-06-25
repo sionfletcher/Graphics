@@ -24,6 +24,8 @@ namespace UnityEngine.Rendering.Universal.Internal
         private ComputeShader _computeShader;
         private ComputeShader _arrayComputeShader;
 
+        private Material _bloomMaterial;
+
         /// <summary>
         /// Creates a new <c>BloomPass</c> instance.
         /// </summary>
@@ -50,6 +52,10 @@ namespace UnityEngine.Rendering.Universal.Internal
             _downSampleMips = new RTHandle[passCount];
             _upSampleMips = new RTHandle[passCount - 1];
 
+
+            var bloomShader = Shader.Find("HoHo/Bloom");
+            _bloomMaterial = CoreUtils.CreateEngineMaterial(bloomShader);
+
             _computeShader = Resources.Load<ComputeShader>("Bloom");
             _arrayComputeShader = Resources.Load<ComputeShader>("BloomArray");
         }
@@ -68,20 +74,22 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            ConfigureDownSampleMips(renderingData.cameraData.cameraTargetDescriptor);
-        }
-
-
-        private void ConfigureDownSampleMips(RenderTextureDescriptor descriptor)
-        {
+            var descriptor = renderingData.cameraData.cameraTargetDescriptor;
             descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
             descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
             descriptor.enableRandomWrite = true;
 
+            ConfigureDownSampleMips(descriptor);
+            ConfigureUpSampleMips(descriptor);
+        }
+
+
+        private void ConfigureDownSampleMips(RenderTextureDescriptor descriptor)
+        {
             var width = descriptor.width;
             var height = descriptor.height;
-            var divider = 2;
+            var divider = 4;
             for (var i = 0; i < _passCount; i++)
             {
                 descriptor.width = width / divider;
@@ -101,6 +109,19 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private void ConfigureUpSampleMips(RenderTextureDescriptor descriptor)
         {
+            for (var i = 0; i < _passCount - 1; i++)
+            {
+                descriptor.width = _downSampleMips[i].rt.width;
+                descriptor.height = _downSampleMips[i].rt.height;
+
+                RenderingUtils.ReAllocateIfNeeded(
+                    ref _upSampleMips[i],
+                    descriptor,
+                    FilterMode.Bilinear,
+                    TextureWrapMode.Clamp,
+                    name: $"_Bloom_UpSample_{i:D2}"
+                );
+            }
         }
 
 
@@ -124,9 +145,8 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.SetFoveatedRenderingMode(FoveatedRenderingMode.Disabled);
 #endif
 
-            // ScriptableRenderer.SetRenderTarget(cmd, Destination, k_CameraTarget, clearFlag, clearColor);
+            ScriptableRenderer.SetRenderTarget(cmd, _upSampleMips[0], k_CameraTarget, clearFlag, clearColor);
 
-            // var samplingMaterial = passData.samplingMaterial;
             var shader = Source.rt.volumeDepth == 2 ? _arrayComputeShader : _computeShader;
 
             // if (samplingMaterial == null)
@@ -143,13 +163,12 @@ namespace UnityEngine.Rendering.Universal.Internal
                 DownSamplePasses(shader, ref cmd);
                 UpSamplePasses(shader, ref cmd);
 
-                Blitter.BlitCameraTexture(cmd, _downSampleMips[^1], Source, 0, false);
-            }
-        }
+                _bloomMaterial.SetTexture("_BloomTexture", _upSampleMips[0]);
 
-        private void UpSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
-        {
-            // throw new NotImplementedException();
+                Blitter.BlitCameraTexture(cmd, _upSampleMips[0], Source, _bloomMaterial, 0);
+
+                // Blitter.BlitCameraTexture(cmd, _upSampleMips[0], Source, 0, true);
+            }
         }
 
         private void DownSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
@@ -181,8 +200,49 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.DispatchCompute(
                     shader,
                     kernel,
-                    Mathf.CeilToInt(outputHandle.rt.width / 32.0f),
-                    Mathf.CeilToInt(outputHandle.rt.height / 32.0f),
+                    Mathf.CeilToInt(outputHandle.rt.width / 8.0f),
+                    Mathf.CeilToInt(outputHandle.rt.height / 8.0f),
+                    1
+                );
+
+                inputHandle = outputHandle;
+            }
+        }
+
+        private void UpSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
+        {
+            var inputHandle = _downSampleMips[^1];
+            for (var i = _passCount - 2; i >= 0; i--)
+            {
+                var kernel = shader.FindKernel("up_sample");
+                var previousSampleHandle = _downSampleMips[i];
+                var outputHandle = _upSampleMips[i];
+
+                var inputSize = new Vector4(
+                    1.0f / inputHandle.rt.width,
+                    1.0f / inputHandle.rt.height,
+                    inputHandle.rt.width,
+                    inputHandle.rt.height
+                );
+
+                var outputSize = new Vector4(
+                    1.0f / outputHandle.rt.width,
+                    1.0f / outputHandle.rt.height,
+                    outputHandle.rt.width,
+                    outputHandle.rt.height
+                );
+
+                cmd.SetComputeVectorParam(shader, "input_texel_size", inputSize);
+                cmd.SetComputeVectorParam(shader, "output_texel_size", outputSize);
+                cmd.SetComputeTextureParam(shader, kernel, "previous", previousSampleHandle);
+                cmd.SetComputeTextureParam(shader, kernel, "input", inputHandle);
+                cmd.SetComputeTextureParam(shader, kernel, "output", outputHandle);
+
+                cmd.DispatchCompute(
+                    shader,
+                    kernel,
+                    Mathf.CeilToInt(outputHandle.rt.width / 8.0f),
+                    Mathf.CeilToInt(outputHandle.rt.height / 8.0f),
                     1
                 );
 
