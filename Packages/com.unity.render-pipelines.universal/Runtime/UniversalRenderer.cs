@@ -294,7 +294,8 @@ namespace UnityEngine.Rendering.Universal
             m_DrawSkyboxPass = new DrawSkyboxPass(RenderPassEvent.BeforeRenderingSkybox);
             m_CopyColorPass = new CopyColorPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
             // TODO - pass count param
-            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, 7, m_SamplingMaterial, m_BlitMaterial);
+
+            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, 10, m_SamplingMaterial, m_BlitMaterial);
 #if ADAPTIVE_PERFORMANCE_2_1_0_OR_NEWER
             if (needTransparencyPass)
 #endif
@@ -387,6 +388,8 @@ namespace UnityEngine.Rendering.Universal
             m_PostProcessPasses.ReleaseRenderTargets();
             m_MainLightShadowCasterPass?.Dispose();
             m_AdditionalLightsShadowCasterPass?.Dispose();
+
+            m_BloomPass?.Dispose();
 
             m_CameraDepthAttachment?.Release();
             m_DepthTexture?.Release();
