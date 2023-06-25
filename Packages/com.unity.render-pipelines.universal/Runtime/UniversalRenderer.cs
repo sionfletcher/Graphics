@@ -131,6 +131,7 @@ namespace UnityEngine.Rendering.Universal
         RTHandle m_NormalsTexture;
         RTHandle m_DecalLayersTexture;
         RTHandle m_OpaqueColor;
+        RTHandle m_BloomHandle;
         RTHandle m_MotionVectorColor;
         RTHandle m_MotionVectorDepth;
 
@@ -292,7 +293,8 @@ namespace UnityEngine.Rendering.Universal
 
             m_DrawSkyboxPass = new DrawSkyboxPass(RenderPassEvent.BeforeRenderingSkybox);
             m_CopyColorPass = new CopyColorPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
-            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
+            // TODO - pass count param
+            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, 7, m_SamplingMaterial, m_BlitMaterial);
 #if ADAPTIVE_PERFORMANCE_2_1_0_OR_NEWER
             if (needTransparencyPass)
 #endif
@@ -968,6 +970,7 @@ namespace UnityEngine.Rendering.Universal
             }
             else
             {
+                // TODO - can we avoid the resolve here, and just sample the texture in the bloom pass as an MSAA texture?
                 // Optimized store actions are very important on tile based GPUs and have a great impact on performance.
                 // if MSAA is enabled and any of the following passes need a copy of the color or depth target, make sure the MSAA'd surface is stored
                 // if following passes won't use it then just resolve (the Resolve action will still store the resolved surface, but discard the MSAA'd surface, which is very expensive to store).
@@ -1065,15 +1068,7 @@ namespace UnityEngine.Rendering.Universal
 
             if(renderingData.cameraData.requiresBloomTexture)
             {
-                // TODO: Downsampling method should be stored in the renderer instead of in the asset.
-                // We need to migrate this data to renderer. For now, we query the method in the active asset.
-                Downsampling downsamplingMethod = UniversalRenderPipeline.asset.opaqueDownsampling;
-                var descriptor = cameraTargetDescriptor;
-                descriptor.colorFormat = UniversalRenderPipeline.asset.opaqueDownsampleTextureFormat;
-                CopyColorPass.ConfigureDescriptor(downsamplingMethod, ref descriptor, out var filterMode);
-
-                RenderingUtils.ReAllocateIfNeeded(ref m_OpaqueColor, descriptor, filterMode, TextureWrapMode.Clamp, name: "_CameraOpaqueTexture");
-                m_BloomPass.Setup(m_ActiveCameraColorAttachment, m_OpaqueColor, downsamplingMethod);
+                m_BloomPass.Setup(m_ActiveCameraColorAttachment);
                 EnqueuePass(m_BloomPass);
             }
 
@@ -1490,7 +1485,7 @@ namespace UnityEngine.Rendering.Universal
             }
 #endif
 
-            bool requiresBlitForOffscreenCamera = cameraData.postProcessEnabled || cameraData.requiresOpaqueTexture || requiresExplicitMsaaResolve || !cameraData.isDefaultViewport;
+            bool requiresBlitForOffscreenCamera = cameraData.postProcessEnabled || cameraData.requiresOpaqueTexture || cameraData.requiresBloomTexture || requiresExplicitMsaaResolve || !cameraData.isDefaultViewport;
             if (isOffscreenRender)
                 return requiresBlitForOffscreenCamera;
 
