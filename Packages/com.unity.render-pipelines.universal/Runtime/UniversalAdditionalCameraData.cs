@@ -310,6 +310,8 @@ namespace UnityEngine.Rendering.Universal
         [SerializeField]
         CameraOverrideOption m_RequiresOpaqueTextureOption = CameraOverrideOption.UsePipelineSettings;
 
+        private CameraOverrideOption m_RequiresBloomTextureOption = CameraOverrideOption.UsePipelineSettings;
+
         [SerializeField] CameraRenderType m_CameraType = CameraRenderType.Base;
         [SerializeField] List<Camera> m_Cameras = new List<Camera>();
         [SerializeField] int m_RendererIndex = -1;
