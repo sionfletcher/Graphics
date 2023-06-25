@@ -19,7 +19,41 @@ namespace UnityEngine.Rendering.Universal.Internal
         private int _passCount;
 
         private RTHandle[] _downSampleMips;
+
+        private RTHandle[] DownSampleMips
+        {
+            get
+            {
+                if (_downSampleMips?.Length == _passCount) return _downSampleMips;
+
+                if (_downSampleMips != null)
+                    foreach (var downSampleMip in _downSampleMips)
+                        downSampleMip?.Release();
+
+                _downSampleMips = new RTHandle[_passCount];
+
+                return _downSampleMips;
+            }
+        }
+
         private RTHandle[] _upSampleMips;
+
+        private RTHandle[] UpSampleMips
+        {
+            get
+            {
+                if (_upSampleMips?.Length == _passCount - 1) return _upSampleMips;
+
+                if (_upSampleMips != null)
+                    foreach (var upSampleMip in _upSampleMips)
+                        upSampleMip?.Release();
+
+                _upSampleMips = new RTHandle[_passCount - 1];
+
+                return _upSampleMips;
+            }
+        }
+
 
         private ComputeShader _computeShader;
         private ComputeShader _arrayComputeShader;
@@ -30,6 +64,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// Creates a new <c>BloomPass</c> instance.
         /// </summary>
         /// <param name="evt">The <c>RenderPassEvent</c> to use.</param>
+        /// <param name="passCount">Number of mip passes</param>
         /// <param name="samplingMaterial">The <c>Material</c> to use for downsampling quarter-resolution image with box filtering.</param>
         /// <param name="copyColorMaterial">The <c>Material</c> to use for other downsampling options.</param>
         /// <seealso cref="RenderPassEvent"/>
@@ -49,9 +84,6 @@ namespace UnityEngine.Rendering.Universal.Internal
             base.useNativeRenderPass = false;
 
             _passCount = passCount;
-            _downSampleMips = new RTHandle[passCount];
-            _upSampleMips = new RTHandle[passCount - 1];
-
 
             var bloomShader = Shader.Find("HoHo/Bloom");
             _bloomMaterial = CoreUtils.CreateEngineMaterial(bloomShader);
@@ -80,6 +112,9 @@ namespace UnityEngine.Rendering.Universal.Internal
             descriptor.depthBufferBits = 0;
             descriptor.enableRandomWrite = true;
 
+            var min = Mathf.Min(descriptor.width, descriptor.height);
+            _passCount = Mathf.Min(Mathf.FloorToInt(Mathf.Log(min, 2)) - 1, _passCount);
+
             ConfigureDownSampleMips(descriptor);
             ConfigureUpSampleMips(descriptor);
         }
@@ -87,6 +122,7 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private void ConfigureDownSampleMips(RenderTextureDescriptor descriptor)
         {
+            // var downSampleMips
             var width = descriptor.width;
             var height = descriptor.height;
             var divider = 4;
@@ -96,7 +132,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 descriptor.height = height / divider;
 
                 RenderingUtils.ReAllocateIfNeeded(
-                    ref _downSampleMips[i],
+                    ref DownSampleMips[i],
                     descriptor,
                     FilterMode.Bilinear,
                     TextureWrapMode.Clamp,
@@ -111,11 +147,11 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             for (var i = 0; i < _passCount - 1; i++)
             {
-                descriptor.width = _downSampleMips[i].rt.width;
-                descriptor.height = _downSampleMips[i].rt.height;
+                descriptor.width = DownSampleMips[i].rt.width;
+                descriptor.height = DownSampleMips[i].rt.height;
 
                 RenderingUtils.ReAllocateIfNeeded(
-                    ref _upSampleMips[i],
+                    ref UpSampleMips[i],
                     descriptor,
                     FilterMode.Bilinear,
                     TextureWrapMode.Clamp,
@@ -145,7 +181,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.SetFoveatedRenderingMode(FoveatedRenderingMode.Disabled);
 #endif
 
-            ScriptableRenderer.SetRenderTarget(cmd, _upSampleMips[0], k_CameraTarget, clearFlag, clearColor);
+            ScriptableRenderer.SetRenderTarget(cmd, UpSampleMips[0], k_CameraTarget, clearFlag, clearColor);
 
             var shader = Source.rt.volumeDepth == 2 ? _arrayComputeShader : _computeShader;
 
@@ -163,11 +199,11 @@ namespace UnityEngine.Rendering.Universal.Internal
                 DownSamplePasses(shader, ref cmd);
                 UpSamplePasses(shader, ref cmd);
 
-                _bloomMaterial.SetTexture("_BloomTexture", _upSampleMips[0]);
+                _bloomMaterial.SetTexture("_BloomTexture", UpSampleMips[0]);
 
-                Blitter.BlitCameraTexture(cmd, _upSampleMips[0], Source, _bloomMaterial, 0);
+                Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, _bloomMaterial, 0);
 
-                // Blitter.BlitCameraTexture(cmd, _upSampleMips[0], Source, 0, true);
+                // Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, 0, true);
             }
         }
 
@@ -176,7 +212,7 @@ namespace UnityEngine.Rendering.Universal.Internal
             var inputHandle = Source;
             for (var i = 0; i < _passCount; i++)
             {
-                var outputHandle = _downSampleMips[i];
+                var outputHandle = DownSampleMips[i];
 
                 var kernel = shader.FindKernel("down_sample");
 
@@ -211,12 +247,12 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private void UpSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
         {
-            var inputHandle = _downSampleMips[^1];
+            var inputHandle = DownSampleMips[^1];
             for (var i = _passCount - 2; i >= 0; i--)
             {
                 var kernel = shader.FindKernel("up_sample");
-                var previousSampleHandle = _downSampleMips[i];
-                var outputHandle = _upSampleMips[i];
+                var previousSampleHandle = DownSampleMips[i];
+                var outputHandle = UpSampleMips[i];
 
                 var inputSize = new Vector4(
                     1.0f / inputHandle.rt.width,
@@ -250,32 +286,24 @@ namespace UnityEngine.Rendering.Universal.Internal
             }
         }
 
-
-        private class PassData
-        {
-            internal TextureHandle source;
-
-            internal TextureHandle destination;
-
-            // internal RenderingData renderingData;
-            internal bool useProceduralBlit;
-            internal bool disableFoveatedRenderingForPass;
-            internal CommandBuffer cmd;
-            internal Material samplingMaterial;
-            internal Material copyColorMaterial;
-            internal Downsampling downsamplingMethod;
-            internal ClearFlag clearFlag;
-            internal Color clearColor;
-            internal int sampleOffsetShaderHandle;
-            internal ComputeShader computeShader;
-            public ComputeShader arrayComputeShader;
-        }
-
         /// <inheritdoc/>
         public override void OnCameraCleanup(CommandBuffer cmd)
         {
             if (cmd == null)
                 throw new ArgumentNullException("cmd");
+        }
+
+        public void Dispose()
+        {
+            foreach (var handle in _upSampleMips)
+            {
+                handle?.Release();
+            }
+
+            foreach (var handle in _downSampleMips)
+            {
+                handle?.Release();
+            }
         }
     }
 }
