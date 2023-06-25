@@ -12,6 +12,7 @@ namespace UnityEditor.Rendering.Universal
         public SerializedProperty requireOpaqueTextureProp { get; }
         public SerializedProperty opaqueDownsamplingProp { get; }
         public SerializedProperty opaqueDownsampleTextureFormatProp { get; }
+        public SerializedProperty requireBloomTextureProp { get;  }
         public SerializedProperty supportsTerrainHolesProp { get; }
         public SerializedProperty enableLODCrossFadeProp { get; }
         public SerializedProperty lodCrossFadeDitheringTypeProp { get; }
@@ -88,6 +89,7 @@ namespace UnityEditor.Rendering.Universal
             requireDepthTextureProp = serializedObject.FindProperty("m_RequireDepthTexture");
             requireOpaqueTextureProp = serializedObject.FindProperty("m_RequireOpaqueTexture");
             opaqueDownsamplingProp = serializedObject.FindProperty("m_OpaqueDownsampling");
+            requireBloomTextureProp = serializedObject.FindProperty("m_RequireBloomTexture");
             opaqueDownsampleTextureFormatProp = serializedObject.FindProperty("m_OpaqueDownsampleTextureFormat");
             supportsTerrainHolesProp = serializedObject.FindProperty("m_SupportsTerrainHoles");
             enableLODCrossFadeProp = serializedObject.FindProperty("m_EnableLODCrossFade");

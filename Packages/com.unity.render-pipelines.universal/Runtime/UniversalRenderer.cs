@@ -104,6 +104,7 @@ namespace UnityEngine.Rendering.Universal
         DrawSkyboxPass m_DrawSkyboxPass;
         CopyDepthPass m_CopyDepthPass;
         CopyColorPass m_CopyColorPass;
+        BloomPass m_BloomPass;
         TransparentSettingsPass m_TransparentSettingsPass;
         DrawObjectsPass m_RenderTransparentForwardPass;
         InvokeOnRenderObjectCallbackPass m_OnRenderObjectCallbackPass;
@@ -291,6 +292,7 @@ namespace UnityEngine.Rendering.Universal
 
             m_DrawSkyboxPass = new DrawSkyboxPass(RenderPassEvent.BeforeRenderingSkybox);
             m_CopyColorPass = new CopyColorPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
+            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
 #if ADAPTIVE_PERFORMANCE_2_1_0_OR_NEWER
             if (needTransparencyPass)
 #endif
@@ -1060,6 +1062,21 @@ namespace UnityEngine.Rendering.Universal
                 m_CopyColorPass.Setup(m_ActiveCameraColorAttachment, m_OpaqueColor, downsamplingMethod);
                 EnqueuePass(m_CopyColorPass);
             }
+
+            if(renderingData.cameraData.requiresBloomTexture)
+            {
+                // TODO: Downsampling method should be stored in the renderer instead of in the asset.
+                // We need to migrate this data to renderer. For now, we query the method in the active asset.
+                Downsampling downsamplingMethod = UniversalRenderPipeline.asset.opaqueDownsampling;
+                var descriptor = cameraTargetDescriptor;
+                descriptor.colorFormat = UniversalRenderPipeline.asset.opaqueDownsampleTextureFormat;
+                CopyColorPass.ConfigureDescriptor(downsamplingMethod, ref descriptor, out var filterMode);
+
+                RenderingUtils.ReAllocateIfNeeded(ref m_OpaqueColor, descriptor, filterMode, TextureWrapMode.Clamp, name: "_CameraOpaqueTexture");
+                m_BloomPass.Setup(m_ActiveCameraColorAttachment, m_OpaqueColor, downsamplingMethod);
+                EnqueuePass(m_BloomPass);
+            }
+
 
             // Motion vectors
             if (renderPassInputs.requiresMotionVectors)

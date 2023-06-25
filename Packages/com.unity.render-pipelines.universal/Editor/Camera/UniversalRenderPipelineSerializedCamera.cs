@@ -25,6 +25,7 @@ namespace UnityEditor.Rendering.Universal
         public SerializedProperty renderShadows { get; }
         public SerializedProperty renderDepth { get; }
         public SerializedProperty renderOpaque { get; }
+        public SerializedProperty renderBloom { get;  }
         public SerializedProperty renderer { get; }
         public SerializedProperty cameraType { get; }
         public SerializedProperty cameras { get; set; }
@@ -93,6 +94,7 @@ namespace UnityEditor.Rendering.Universal
             renderShadows = serializedAdditionalDataObject.FindProperty("m_RenderShadows");
             renderDepth = serializedAdditionalDataObject.FindProperty("m_RequiresDepthTextureOption");
             renderOpaque = serializedAdditionalDataObject.FindProperty("m_RequiresOpaqueTextureOption");
+            renderBloom = serializedAdditionalDataObject.FindProperty("m_RequiresBloomTextureOption");
             renderer = serializedAdditionalDataObject.FindProperty("m_RendererIndex");
             volumeLayerMask = serializedAdditionalDataObject.FindProperty("m_VolumeLayerMask");
             volumeTrigger = serializedAdditionalDataObject.FindProperty("m_VolumeTrigger");
@@ -112,7 +114,7 @@ namespace UnityEditor.Rendering.Universal
             taaMipBias = taaSettings.FindPropertyRelative(nameof(TemporalAA.Settings.mipBias));
             taaVarianceClampScale = taaSettings.FindPropertyRelative(nameof(TemporalAA.Settings.varianceClampScale));
             taaContrastAdaptiveSharpening = taaSettings.FindPropertyRelative(nameof(TemporalAA.Settings.contrastAdaptiveSharpening));
-            
+
             allowHDROutput = serializedAdditionalDataObject.FindProperty("m_AllowHDROutput");
         }
 

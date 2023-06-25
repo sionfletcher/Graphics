@@ -510,6 +510,22 @@ namespace UnityEngine.Rendering.Universal
             set { m_RequiresOpaqueTextureOption = (value) ? CameraOverrideOption.On : CameraOverrideOption.Off; }
         }
 
+        public bool requiresBloomTexture
+        {
+            get
+            {
+                if (m_RequiresBloomTextureOption == CameraOverrideOption.UsePipelineSettings)
+                {
+                    return UniversalRenderPipeline.asset.supportsBloomTexture;
+                }
+                else
+                {
+                    return m_RequiresBloomTextureOption == CameraOverrideOption.On;
+                }
+            }
+            set { m_RequiresBloomTextureOption = (value) ? CameraOverrideOption.On : CameraOverrideOption.Off; }
+        }
+
         /// <summary>
         /// Returns the <see cref="ScriptableRenderer"/> that is used to render this camera.
         /// </summary>

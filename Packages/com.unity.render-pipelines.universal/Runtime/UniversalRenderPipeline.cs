@@ -1005,7 +1005,7 @@ namespace UnityEngine.Rendering.Universal
             };
             SceneViewDrawMode.SetupDrawMode();
 #endif
-            
+
             SupportedRenderingFeatures.active.supportsHDR = pipelineAsset.supportsHDR;
         }
 
@@ -1176,6 +1176,7 @@ namespace UnityEngine.Rendering.Universal
                 cameraData.postProcessEnabled = CoreUtils.ArePostProcessesEnabled(camera);
                 cameraData.requiresDepthTexture = settings.supportsCameraDepthTexture;
                 cameraData.requiresOpaqueTexture = settings.supportsCameraOpaqueTexture;
+                cameraData.requiresBloomTexture = settings.supportsBloomTexture;
                 cameraData.renderer = asset.scriptableRenderer;
                 cameraData.useScreenCoordOverride = false;
                 cameraData.screenSizeOverride = cameraData.pixelRect.size;
@@ -1189,6 +1190,7 @@ namespace UnityEngine.Rendering.Universal
                 cameraData.maxShadowDistance = (additionalCameraData.renderShadows) ? cameraData.maxShadowDistance : 0.0f;
                 cameraData.requiresDepthTexture = additionalCameraData.requiresDepthTexture;
                 cameraData.requiresOpaqueTexture = additionalCameraData.requiresColorTexture;
+                cameraData.requiresBloomTexture = additionalCameraData.requiresBloomTexture;
                 cameraData.renderer = additionalCameraData.scriptableRenderer;
                 cameraData.useScreenCoordOverride = additionalCameraData.useScreenCoordOverride;
                 cameraData.screenSizeOverride = additionalCameraData.screenSizeOverride;
@@ -1201,6 +1203,7 @@ namespace UnityEngine.Rendering.Universal
                 cameraData.postProcessEnabled = false;
                 cameraData.requiresDepthTexture = settings.supportsCameraDepthTexture;
                 cameraData.requiresOpaqueTexture = settings.supportsCameraOpaqueTexture;
+                cameraData.requiresBloomTexture = settings.supportsBloomTexture;
                 cameraData.renderer = asset.scriptableRenderer;
                 cameraData.useScreenCoordOverride = false;
                 cameraData.screenSizeOverride = cameraData.pixelRect.size;

@@ -367,7 +367,7 @@ namespace UnityEngine.Rendering.Universal
         /// True if this camera should render to high dynamic range color targets.
         /// </summary>
         public bool isHdrEnabled;
-        
+
         /// <summary>
         /// True if this camera allow color conversion and encoding for high dynamic range displays.
         /// </summary>
@@ -377,6 +377,8 @@ namespace UnityEngine.Rendering.Universal
         /// True if this camera requires to write _CameraDepthTexture.
         /// </summary>
         public bool requiresDepthTexture;
+
+        public bool requiresBloomTexture;
 
         /// <summary>
         /// True if this camera requires to copy camera color texture to _CameraOpaqueTexture.
@@ -1658,6 +1660,7 @@ namespace UnityEngine.Rendering.Universal
         AdditionalLightsShadow,
         ColorGradingLUT,
         CopyColor,
+        HoHoBloom,
         CopyDepth,
         DepthNormalPrepass,
         DepthPrepass,

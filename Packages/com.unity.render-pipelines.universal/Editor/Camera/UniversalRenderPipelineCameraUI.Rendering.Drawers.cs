@@ -100,7 +100,8 @@ namespace UnityEditor.Rendering.Universal
                     DrawerRenderingRenderShadows,
                     DrawerRenderingPriority,
                     DrawerRenderingOpaqueTexture,
-                    DrawerRenderingDepthTexture
+                    DrawerRenderingDepthTexture,
+                    DrawerRenderingBloomTexture
                 )
             );
 
@@ -298,6 +299,11 @@ namespace UnityEditor.Rendering.Universal
             static void DrawerRenderingOpaqueTexture(UniversalRenderPipelineSerializedCamera p, Editor owner)
             {
                 EditorGUILayout.PropertyField(p.renderOpaque, Styles.requireOpaqueTexture);
+            }
+
+            static void DrawerRenderingBloomTexture(UniversalRenderPipelineSerializedCamera p, Editor owner)
+            {
+                EditorGUILayout.PropertyField(p.renderBloom, Styles.requireBloomTexture);
             }
         }
     }
