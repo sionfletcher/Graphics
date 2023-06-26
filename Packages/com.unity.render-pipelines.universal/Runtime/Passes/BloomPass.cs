@@ -114,6 +114,7 @@ namespace UnityEngine.Rendering.Universal.Internal
             // TODO: Not a huge difference in performance between formats here surprisingly. Might want to check back.
             // descriptor.colorFormat = RenderTextureFormat.Default;
             descriptor.colorFormat = RenderTextureFormat.RGB565;
+            // TODO: param
             descriptor.width /= 4;
             descriptor.height /= 4;
 
@@ -211,15 +212,6 @@ namespace UnityEngine.Rendering.Universal.Internal
 
             var shader = Source.rt.volumeDepth == 2 ? _arrayComputeShader : _computeShader;
 
-            // if (samplingMaterial == null)
-            // {
-            //     Debug.LogErrorFormat(
-            //         "Missing {0}. Copy Color render pass will not execute. Check for missing reference in the renderer resources.",
-            //         samplingMaterial
-            //     );
-            //     return;
-            // }
-
             using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.HoHoBloom)))
             {
                 Blitter.BlitCameraTexture(cmd, Source, _colorCopy, 0, true);
@@ -227,10 +219,8 @@ namespace UnityEngine.Rendering.Universal.Internal
                 DownSamplePasses(shader, ref cmd);
                 UpSamplePasses(shader, ref cmd);
 
-                _bloomMaterial.SetTexture("_BloomTexture", UpSampleMips[0]);
-                Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, _bloomMaterial, 0);
-
-                // Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, 0, true);
+                // TODO - move this to initialization, no need to do it every frame I think?
+                Shader.SetGlobalTexture("_BloomTexture", UpSampleMips[0]);
             }
         }
 
