@@ -12,15 +12,14 @@ namespace UnityEngine.Rendering.Universal.Internal
     /// </summary>
     public class BloomPass : ScriptableRenderPass
     {
-        Material m_SamplingMaterial;
-        Material m_CopyColorMaterial;
-
-        private RTHandle Source { get; set; }
         private int _passCount;
-
+        private RTHandle Source { get; set; }
         private RTHandle _colorCopy;
-
         private RTHandle[] _downSampleMips;
+
+        private static readonly int BloomColorCopyId = Shader.PropertyToID("_BloomColorCopy");
+        private static readonly int BloomTextureId = Shader.PropertyToID("_BloomTexture");
+
 
         private RTHandle[] DownSampleMips
         {
@@ -73,15 +72,11 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// <seealso cref="Downsampling"/>
         public BloomPass(
             RenderPassEvent evt,
-            int passCount,
-            Material samplingMaterial,
-            Material copyColorMaterial = null
+            int passCount
         )
         {
             base.profilingSampler = new ProfilingSampler(nameof(BloomPass));
 
-            m_SamplingMaterial = samplingMaterial;
-            m_CopyColorMaterial = copyColorMaterial;
             renderPassEvent = evt;
             base.useNativeRenderPass = false;
 
@@ -112,8 +107,8 @@ namespace UnityEngine.Rendering.Universal.Internal
             descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
             // TODO: Not a huge difference in performance between formats here surprisingly. Might want to check back.
-            // descriptor.colorFormat = RenderTextureFormat.Default;
-            descriptor.colorFormat = RenderTextureFormat.RGB565;
+            descriptor.colorFormat = RenderTextureFormat.Default;
+            // descriptor.colorFormat = RenderTextureFormat.RGB565;
             // TODO: param
             descriptor.width /= 4;
             descriptor.height /= 4;
@@ -137,7 +132,6 @@ namespace UnityEngine.Rendering.Universal.Internal
                 name: "_BloomColorCopy"
             );
         }
-
 
         private void ConfigureDownSampleMips(RenderTextureDescriptor descriptor)
         {
@@ -185,7 +179,6 @@ namespace UnityEngine.Rendering.Universal.Internal
             }
         }
 
-
         /// <inheritdoc/>
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
@@ -216,11 +209,12 @@ namespace UnityEngine.Rendering.Universal.Internal
             {
                 Blitter.BlitCameraTexture(cmd, Source, _colorCopy, 0, true);
 
+                Shader.SetGlobalTexture(BloomColorCopyId, _colorCopy);
+
                 DownSamplePasses(shader, ref cmd);
                 UpSamplePasses(shader, ref cmd);
 
-                // TODO - move this to initialization, no need to do it every frame I think?
-                Shader.SetGlobalTexture("_BloomTexture", UpSampleMips[0]);
+                Shader.SetGlobalTexture(BloomTextureId, UpSampleMips[0]);
             }
         }
 

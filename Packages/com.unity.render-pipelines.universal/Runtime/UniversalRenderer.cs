@@ -295,7 +295,7 @@ namespace UnityEngine.Rendering.Universal
             m_CopyColorPass = new CopyColorPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
 
             // TODO - render pass event set to after skybox here, purely for the editor scene view.
-            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingSkybox, 10, m_SamplingMaterial, m_BlitMaterial);
+            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, 10);
 #if ADAPTIVE_PERFORMANCE_2_1_0_OR_NEWER
             if (needTransparencyPass)
 #endif
