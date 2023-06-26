@@ -18,6 +18,8 @@ namespace UnityEngine.Rendering.Universal.Internal
         private RTHandle Source { get; set; }
         private int _passCount;
 
+        private RTHandle _colorCopy;
+
         private RTHandle[] _downSampleMips;
 
         private RTHandle[] DownSampleMips
@@ -107,27 +109,41 @@ namespace UnityEngine.Rendering.Universal.Internal
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             var descriptor = renderingData.cameraData.cameraTargetDescriptor;
-            descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
             descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
             descriptor.enableRandomWrite = true;
+            descriptor.width /= 4;
+            descriptor.height /= 4;
 
             var min = Mathf.Min(descriptor.width, descriptor.height);
             _passCount = Mathf.Min(Mathf.FloorToInt(Mathf.Log(min, 2)) - 1, _passCount);
 
-            Debug.Log($"passCount: {_passCount}");
+            ConfigureColorCopy(descriptor);
 
             ConfigureDownSampleMips(descriptor);
             ConfigureUpSampleMips(descriptor);
+        }
+
+        private void ConfigureColorCopy(RenderTextureDescriptor descriptor)
+        {
+            RenderingUtils.ReAllocateIfNeeded(
+                ref _colorCopy,
+                descriptor,
+                FilterMode.Bilinear,
+                TextureWrapMode.Clamp,
+                name: "_BloomColorCopy"
+            );
         }
 
 
         private void ConfigureDownSampleMips(RenderTextureDescriptor descriptor)
         {
             // var downSampleMips
+            descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
+
             var width = descriptor.width;
             var height = descriptor.height;
-            var divider = 4;
+            var divider = 2;
             for (var i = 0; i < _passCount; i++)
             {
                 descriptor.width = width / divider;
@@ -147,6 +163,8 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private void ConfigureUpSampleMips(RenderTextureDescriptor descriptor)
         {
+            descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
+
             for (var i = 0; i < _passCount - 1; i++)
             {
                 descriptor.width = DownSampleMips[i].rt.width;
@@ -166,6 +184,8 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// <inheritdoc/>
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            if (renderingData.cameraData.camera.cameraType == CameraType.Preview) return;
+
             var cmd = renderingData.commandBuffer;
 
             // TODO RENDERGRAPH: Do we need a similar check in the RenderGraph path?
@@ -198,11 +218,12 @@ namespace UnityEngine.Rendering.Universal.Internal
 
             using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.HoHoBloom)))
             {
+                Blitter.BlitCameraTexture(cmd, Source, _colorCopy, 0, true);
+
                 DownSamplePasses(shader, ref cmd);
                 UpSamplePasses(shader, ref cmd);
 
                 _bloomMaterial.SetTexture("_BloomTexture", UpSampleMips[0]);
-
                 Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, _bloomMaterial, 0);
 
                 // Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, 0, true);
@@ -211,7 +232,7 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private void DownSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
         {
-            var inputHandle = Source;
+            var inputHandle = _colorCopy;
             for (var i = 0; i < _passCount; i++)
             {
                 var outputHandle = DownSampleMips[i];
@@ -238,8 +259,8 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.DispatchCompute(
                     shader,
                     kernel,
-                    Mathf.CeilToInt(outputHandle.rt.width / 8.0f),
-                    Mathf.CeilToInt(outputHandle.rt.height / 8.0f),
+                    Mathf.CeilToInt(outputHandle.rt.width / 16.0f),
+                    Mathf.CeilToInt(outputHandle.rt.height / 16.0f),
                     1
                 );
 
@@ -279,8 +300,8 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.DispatchCompute(
                     shader,
                     kernel,
-                    Mathf.CeilToInt(outputHandle.rt.width / 8.0f),
-                    Mathf.CeilToInt(outputHandle.rt.height / 8.0f),
+                    Mathf.CeilToInt(outputHandle.rt.width / 16.0f),
+                    Mathf.CeilToInt(outputHandle.rt.height / 16.0f),
                     1
                 );
 
