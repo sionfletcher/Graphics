@@ -111,12 +111,14 @@ namespace UnityEngine.Rendering.Universal.Internal
             var descriptor = renderingData.cameraData.cameraTargetDescriptor;
             descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
-            descriptor.enableRandomWrite = true;
+            // TODO: Not a huge difference in performance between formats here surprisingly. Might want to check back.
+            // descriptor.colorFormat = RenderTextureFormat.Default;
+            descriptor.colorFormat = RenderTextureFormat.RGB565;
             descriptor.width /= 4;
             descriptor.height /= 4;
 
             var min = Mathf.Min(descriptor.width, descriptor.height);
-            _passCount = Mathf.Min(Mathf.FloorToInt(Mathf.Log(min, 2)) - 1, _passCount);
+            _passCount = Mathf.Min(Mathf.FloorToInt(Mathf.Log(min, 2)) - 2, _passCount);
 
             ConfigureColorCopy(descriptor);
 
@@ -140,6 +142,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             // var downSampleMips
             descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
+            descriptor.enableRandomWrite = true;
 
             var width = descriptor.width;
             var height = descriptor.height;
@@ -164,6 +167,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         private void ConfigureUpSampleMips(RenderTextureDescriptor descriptor)
         {
             descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
+            descriptor.enableRandomWrite = true;
 
             for (var i = 0; i < _passCount - 1; i++)
             {
@@ -267,6 +271,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 inputHandle = outputHandle;
             }
         }
+
 
         private void UpSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
         {
