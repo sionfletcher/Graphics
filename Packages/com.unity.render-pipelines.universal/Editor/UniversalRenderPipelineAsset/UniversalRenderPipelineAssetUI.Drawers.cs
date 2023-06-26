@@ -137,12 +137,11 @@ namespace UnityEditor.Rendering.Universal
 
                 EditorGUI.BeginDisabledGroup(!serialized.requireOpaqueTextureProp.boolValue);
                 EditorGUILayout.PropertyField(serialized.opaqueDownsamplingProp, Styles.opaqueDownsamplingText);
-                EditorGUILayout.PropertyField(serialized.opaqueDownsampleTextureFormatProp);
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.PropertyField(serialized.requireBloomTextureProp, Styles.requireBloomTextureText);
                 EditorGUI.BeginDisabledGroup(!serialized.requireBloomTextureProp.boolValue);
-                // Bloom properties
+                EditorGUILayout.PropertyField(serialized.bloomRadiusProp, Styles.bloomRadiusText);
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.PropertyField(serialized.supportsTerrainHolesProp, Styles.supportsTerrainHolesText);

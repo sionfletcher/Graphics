@@ -187,15 +187,6 @@ namespace UnityEngine.Rendering.Universal.Internal
 
             var shader = Source.rt.volumeDepth == 2 ? _arrayComputeShader : _computeShader;
 
-            // if (samplingMaterial == null)
-            // {
-            //     Debug.LogErrorFormat(
-            //         "Missing {0}. Copy Color render pass will not execute. Check for missing reference in the renderer resources.",
-            //         samplingMaterial
-            //     );
-            //     return;
-            // }
-
             using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.HoHoBloom)))
             {
                 DownSamplePasses(shader, ref cmd);
@@ -204,8 +195,6 @@ namespace UnityEngine.Rendering.Universal.Internal
                 _bloomMaterial.SetTexture("_BloomTexture", UpSampleMips[0]);
 
                 Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, _bloomMaterial, 0);
-
-                // Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, 0, true);
             }
         }
 
@@ -297,15 +286,17 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public void Dispose()
         {
-            foreach (var handle in _upSampleMips)
-            {
-                handle?.Release();
-            }
+            if (_upSampleMips != null)
+                foreach (var handle in _upSampleMips)
+                {
+                    handle?.Release();
+                }
 
-            foreach (var handle in _downSampleMips)
-            {
-                handle?.Release();
-            }
+            if (_downSampleMips != null)
+                foreach (var handle in _downSampleMips)
+                {
+                    handle?.Release();
+                }
         }
     }
 }
