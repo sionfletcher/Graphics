@@ -442,7 +442,6 @@ namespace UnityEngine.Rendering.Universal
         [SerializeField] Downsampling m_OpaqueDownsampling = Downsampling._2xBilinear;
 
         [SerializeField] bool m_RequireBloomTexture = false;
-        [SerializeField, Range(0.001f, 1.0f)] private float m_BloomRadius = 0.1f;
 
         [SerializeField] bool m_SupportsTerrainHoles = true;
 
@@ -1037,12 +1036,6 @@ namespace UnityEngine.Rendering.Universal
         {
             get => m_RequireBloomTexture;
             set { m_RequireBloomTexture = value; }
-        }
-
-        public float bloomRadius
-        {
-            get => m_BloomRadius;
-            set { m_BloomRadius = value; }
         }
 
         /// <summary>

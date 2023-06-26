@@ -141,7 +141,7 @@ namespace UnityEditor.Rendering.Universal
 
                 EditorGUILayout.PropertyField(serialized.requireBloomTextureProp, Styles.requireBloomTextureText);
                 EditorGUI.BeginDisabledGroup(!serialized.requireBloomTextureProp.boolValue);
-                EditorGUILayout.PropertyField(serialized.bloomRadiusProp, Styles.bloomRadiusText);
+                // Bloom properties
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.PropertyField(serialized.supportsTerrainHolesProp, Styles.supportsTerrainHolesText);

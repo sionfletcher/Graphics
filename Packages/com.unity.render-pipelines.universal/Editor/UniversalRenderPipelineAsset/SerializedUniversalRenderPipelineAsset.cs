@@ -11,8 +11,7 @@ namespace UnityEditor.Rendering.Universal
         public SerializedProperty requireDepthTextureProp { get; }
         public SerializedProperty requireOpaqueTextureProp { get; }
         public SerializedProperty opaqueDownsamplingProp { get; }
-        public SerializedProperty requireBloomTextureProp { get; }
-        public SerializedProperty bloomRadiusProp { get; }
+        public SerializedProperty requireBloomTextureProp { get;  }
         public SerializedProperty supportsTerrainHolesProp { get; }
         public SerializedProperty enableLODCrossFadeProp { get; }
         public SerializedProperty lodCrossFadeDitheringTypeProp { get; }
@@ -90,7 +89,6 @@ namespace UnityEditor.Rendering.Universal
             requireOpaqueTextureProp = serializedObject.FindProperty("m_RequireOpaqueTexture");
             opaqueDownsamplingProp = serializedObject.FindProperty("m_OpaqueDownsampling");
             requireBloomTextureProp = serializedObject.FindProperty("m_RequireBloomTexture");
-            bloomRadiusProp = serializedObject.FindProperty("m_BloomRadius");
             supportsTerrainHolesProp = serializedObject.FindProperty("m_SupportsTerrainHoles");
             enableLODCrossFadeProp = serializedObject.FindProperty("m_EnableLODCrossFade");
             lodCrossFadeDitheringTypeProp = serializedObject.FindProperty("m_LODCrossFadeDitheringType");
@@ -112,15 +110,11 @@ namespace UnityEditor.Rendering.Universal
             additionalLightsRenderingModeProp = serializedObject.FindProperty("m_AdditionalLightsRenderingMode");
             additionalLightsPerObjectLimitProp = serializedObject.FindProperty("m_AdditionalLightsPerObjectLimit");
             additionalLightShadowsSupportedProp = serializedObject.FindProperty("m_AdditionalLightShadowsSupported");
-            additionalLightShadowmapResolutionProp =
-                serializedObject.FindProperty("m_AdditionalLightsShadowmapResolution");
+            additionalLightShadowmapResolutionProp = serializedObject.FindProperty("m_AdditionalLightsShadowmapResolution");
 
-            additionalLightsShadowResolutionTierLowProp =
-                serializedObject.FindProperty("m_AdditionalLightsShadowResolutionTierLow");
-            additionalLightsShadowResolutionTierMediumProp =
-                serializedObject.FindProperty("m_AdditionalLightsShadowResolutionTierMedium");
-            additionalLightsShadowResolutionTierHighProp =
-                serializedObject.FindProperty("m_AdditionalLightsShadowResolutionTierHigh");
+            additionalLightsShadowResolutionTierLowProp = serializedObject.FindProperty("m_AdditionalLightsShadowResolutionTierLow");
+            additionalLightsShadowResolutionTierMediumProp = serializedObject.FindProperty("m_AdditionalLightsShadowResolutionTierMedium");
+            additionalLightsShadowResolutionTierHighProp = serializedObject.FindProperty("m_AdditionalLightsShadowResolutionTierHigh");
 
             additionalLightCookieResolutionProp = serializedObject.FindProperty("m_AdditionalLightsCookieResolution");
             additionalLightCookieFormatProp = serializedObject.FindProperty("m_AdditionalLightsCookieFormat");
