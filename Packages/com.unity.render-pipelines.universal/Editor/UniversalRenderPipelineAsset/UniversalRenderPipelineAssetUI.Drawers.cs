@@ -137,7 +137,6 @@ namespace UnityEditor.Rendering.Universal
 
                 EditorGUI.BeginDisabledGroup(!serialized.requireOpaqueTextureProp.boolValue);
                 EditorGUILayout.PropertyField(serialized.opaqueDownsamplingProp, Styles.opaqueDownsamplingText);
-                EditorGUILayout.PropertyField(serialized.opaqueDownsampleTextureFormatProp);
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUILayout.PropertyField(serialized.requireBloomTextureProp, Styles.requireBloomTextureText);

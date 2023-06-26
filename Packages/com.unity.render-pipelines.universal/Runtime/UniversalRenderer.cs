@@ -293,9 +293,9 @@ namespace UnityEngine.Rendering.Universal
 
             m_DrawSkyboxPass = new DrawSkyboxPass(RenderPassEvent.BeforeRenderingSkybox);
             m_CopyColorPass = new CopyColorPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
-            // TODO - pass count param
 
-            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, 10, m_SamplingMaterial, m_BlitMaterial);
+            // TODO - render pass event set to after skybox here, purely for the editor scene view.
+            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingOpaques, 10);
 #if ADAPTIVE_PERFORMANCE_2_1_0_OR_NEWER
             if (needTransparencyPass)
 #endif
@@ -1061,7 +1061,6 @@ namespace UnityEngine.Rendering.Universal
                 // We need to migrate this data to renderer. For now, we query the method in the active asset.
                 Downsampling downsamplingMethod = UniversalRenderPipeline.asset.opaqueDownsampling;
                 var descriptor = cameraTargetDescriptor;
-                descriptor.colorFormat = UniversalRenderPipeline.asset.opaqueDownsampleTextureFormat;
                 CopyColorPass.ConfigureDescriptor(downsamplingMethod, ref descriptor, out var filterMode);
 
                 RenderingUtils.ReAllocateIfNeeded(ref m_OpaqueColor, descriptor, filterMode, TextureWrapMode.Clamp, name: "_CameraOpaqueTexture");

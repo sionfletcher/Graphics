@@ -12,13 +12,14 @@ namespace UnityEngine.Rendering.Universal.Internal
     /// </summary>
     public class BloomPass : ScriptableRenderPass
     {
-        Material m_SamplingMaterial;
-        Material m_CopyColorMaterial;
-
-        private RTHandle Source { get; set; }
         private int _passCount;
-
+        private RTHandle Source { get; set; }
+        private RTHandle _colorCopy;
         private RTHandle[] _downSampleMips;
+
+        private static readonly int BloomColorCopyId = Shader.PropertyToID("_BloomColorCopy");
+        private static readonly int BloomTextureId = Shader.PropertyToID("_BloomTexture");
+
 
         private RTHandle[] DownSampleMips
         {
@@ -71,15 +72,11 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// <seealso cref="Downsampling"/>
         public BloomPass(
             RenderPassEvent evt,
-            int passCount,
-            Material samplingMaterial,
-            Material copyColorMaterial = null
+            int passCount
         )
         {
             base.profilingSampler = new ProfilingSampler(nameof(BloomPass));
 
-            m_SamplingMaterial = samplingMaterial;
-            m_CopyColorMaterial = copyColorMaterial;
             renderPassEvent = evt;
             base.useNativeRenderPass = false;
 
@@ -107,25 +104,44 @@ namespace UnityEngine.Rendering.Universal.Internal
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             var descriptor = renderingData.cameraData.cameraTargetDescriptor;
-            descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
             descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
-            descriptor.enableRandomWrite = true;
+            // TODO: Not a huge difference in performance between formats here surprisingly. Might want to check back.
+            descriptor.colorFormat = RenderTextureFormat.Default;
+            // descriptor.colorFormat = RenderTextureFormat.RGB565;
+            // TODO: param
+            descriptor.width /= 4;
+            descriptor.height /= 4;
 
             var min = Mathf.Min(descriptor.width, descriptor.height);
-            _passCount = Mathf.Min(Mathf.FloorToInt(Mathf.Log(min, 2)) - 1, _passCount);
+            _passCount = Mathf.Min(Mathf.FloorToInt(Mathf.Log(min, 2)) - 2, _passCount);
+
+            ConfigureColorCopy(descriptor);
 
             ConfigureDownSampleMips(descriptor);
             ConfigureUpSampleMips(descriptor);
         }
 
+        private void ConfigureColorCopy(RenderTextureDescriptor descriptor)
+        {
+            RenderingUtils.ReAllocateIfNeeded(
+                ref _colorCopy,
+                descriptor,
+                FilterMode.Bilinear,
+                TextureWrapMode.Clamp,
+                name: "_BloomColorCopy"
+            );
+        }
 
         private void ConfigureDownSampleMips(RenderTextureDescriptor descriptor)
         {
             // var downSampleMips
+            descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
+            descriptor.enableRandomWrite = true;
+
             var width = descriptor.width;
             var height = descriptor.height;
-            var divider = 4;
+            var divider = 2;
             for (var i = 0; i < _passCount; i++)
             {
                 descriptor.width = width / divider;
@@ -145,6 +161,9 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private void ConfigureUpSampleMips(RenderTextureDescriptor descriptor)
         {
+            descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
+            descriptor.enableRandomWrite = true;
+
             for (var i = 0; i < _passCount - 1; i++)
             {
                 descriptor.width = DownSampleMips[i].rt.width;
@@ -160,10 +179,11 @@ namespace UnityEngine.Rendering.Universal.Internal
             }
         }
 
-
         /// <inheritdoc/>
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            if (renderingData.cameraData.camera.cameraType == CameraType.Preview) return;
+
             var cmd = renderingData.commandBuffer;
 
             // TODO RENDERGRAPH: Do we need a similar check in the RenderGraph path?
@@ -185,31 +205,22 @@ namespace UnityEngine.Rendering.Universal.Internal
 
             var shader = Source.rt.volumeDepth == 2 ? _arrayComputeShader : _computeShader;
 
-            // if (samplingMaterial == null)
-            // {
-            //     Debug.LogErrorFormat(
-            //         "Missing {0}. Copy Color render pass will not execute. Check for missing reference in the renderer resources.",
-            //         samplingMaterial
-            //     );
-            //     return;
-            // }
-
             using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.HoHoBloom)))
             {
+                Blitter.BlitCameraTexture(cmd, Source, _colorCopy, 0, true);
+
+                Shader.SetGlobalTexture(BloomColorCopyId, _colorCopy);
+
                 DownSamplePasses(shader, ref cmd);
                 UpSamplePasses(shader, ref cmd);
 
-                _bloomMaterial.SetTexture("_BloomTexture", UpSampleMips[0]);
-
-                Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, _bloomMaterial, 0);
-
-                // Blitter.BlitCameraTexture(cmd, UpSampleMips[0], Source, 0, true);
+                Shader.SetGlobalTexture(BloomTextureId, UpSampleMips[0]);
             }
         }
 
         private void DownSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
         {
-            var inputHandle = Source;
+            var inputHandle = _colorCopy;
             for (var i = 0; i < _passCount; i++)
             {
                 var outputHandle = DownSampleMips[i];
@@ -236,14 +247,15 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.DispatchCompute(
                     shader,
                     kernel,
-                    Mathf.CeilToInt(outputHandle.rt.width / 8.0f),
-                    Mathf.CeilToInt(outputHandle.rt.height / 8.0f),
+                    Mathf.CeilToInt(outputHandle.rt.width / 16.0f),
+                    Mathf.CeilToInt(outputHandle.rt.height / 16.0f),
                     1
                 );
 
                 inputHandle = outputHandle;
             }
         }
+
 
         private void UpSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
         {
@@ -277,8 +289,8 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.DispatchCompute(
                     shader,
                     kernel,
-                    Mathf.CeilToInt(outputHandle.rt.width / 8.0f),
-                    Mathf.CeilToInt(outputHandle.rt.height / 8.0f),
+                    Mathf.CeilToInt(outputHandle.rt.width / 16.0f),
+                    Mathf.CeilToInt(outputHandle.rt.height / 16.0f),
                     1
                 );
 
@@ -295,15 +307,17 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         public void Dispose()
         {
-            foreach (var handle in _upSampleMips)
-            {
-                handle?.Release();
-            }
+            if (_upSampleMips != null)
+                foreach (var handle in _upSampleMips)
+                {
+                    handle?.Release();
+                }
 
-            foreach (var handle in _downSampleMips)
-            {
-                handle?.Release();
-            }
+            if (_downSampleMips != null)
+                foreach (var handle in _downSampleMips)
+                {
+                    handle?.Release();
+                }
         }
     }
 }

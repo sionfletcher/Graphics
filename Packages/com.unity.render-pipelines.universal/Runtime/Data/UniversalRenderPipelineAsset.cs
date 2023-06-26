@@ -440,7 +440,6 @@ namespace UnityEngine.Rendering.Universal
         [SerializeField] bool m_RequireDepthTexture = false;
         [SerializeField] bool m_RequireOpaqueTexture = false;
         [SerializeField] Downsampling m_OpaqueDownsampling = Downsampling._2xBilinear;
-        [SerializeField] RenderTextureFormat m_OpaqueDownsampleTextureFormat = RenderTextureFormat.Default;
 
         [SerializeField] bool m_RequireBloomTexture = false;
 
@@ -1032,8 +1031,6 @@ namespace UnityEngine.Rendering.Universal
         {
             get { return m_OpaqueDownsampling; }
         }
-
-        public RenderTextureFormat opaqueDownsampleTextureFormat => m_OpaqueDownsampleTextureFormat;
 
         public bool supportsBloomTexture
         {

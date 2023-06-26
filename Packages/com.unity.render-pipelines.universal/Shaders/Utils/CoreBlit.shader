@@ -275,6 +275,42 @@ Shader "Hidden/Universal/CoreBlit"
                 #pragma fragment FragOctahedralProjectBilinearRepeat
             ENDHLSL
         }
+
+        // 23. With Bloom
+        Pass
+        {
+            ZWrite Off ZTest Always Blend Off Cull Off
+
+            HLSLPROGRAM
+            #include "Assets/Shaders/Common/Common.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Filtering.hlsl"
+
+            #pragma vertex Vert
+            #pragma fragment FinalBlitHoHo
+
+            TEXTURE2D_X(_BloomTexture);
+            SAMPLER(sampler_BloomTexture);
+
+            float4 _BloomTexture_TexelSize;
+            float _BloomIntensity;
+
+            float4 FinalBlitHoHo(Varyings input): SV_Target
+            {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+                float4 result = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, input.texcoord.xy,
+                                                       _BlitMipLevel);
+                half3 bloom = SampleTexture2DBicubic(
+                    TEXTURE2D_X_ARGS(_BloomTexture, sampler_BloomTexture),
+                    input.texcoord.xy, _BloomTexture_TexelSize.zwxy,
+                    1.0,
+                    unity_StereoEyeIndex).rgb * _BloomIntensity;
+
+                bloom = ApplyBlueNoise(input.positionCS, bloom);
+                result.rgb = (1 - bloom) * result + bloom;
+                return result;
+            }
+            ENDHLSL
+        }
     }
 
     Fallback Off
