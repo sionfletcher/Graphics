@@ -294,6 +294,11 @@ Shader "Hidden/Universal/CoreBlit"
             float4 _BloomTexture_TexelSize;
             float _BloomIntensity;
 
+            TEXTURE2D_X(_GodRays);
+            SAMPLER(sampler_GodRays);
+
+            float4 _GodRays_TexelSize;
+
             float4 FinalBlitHoHo(Varyings input): SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -305,7 +310,9 @@ Shader "Hidden/Universal/CoreBlit"
                     1.0,
                     unity_StereoEyeIndex).rgb * _BloomIntensity;
 
-                bloom = ApplyBlueNoise(input.positionCS, bloom);
+                half3 god_rays = SAMPLE_TEXTURE2D_X_LOD(_GodRays, sampler_GodRays, input.texcoord.xy, 0);
+
+                bloom = ApplyBlueNoise(input.positionCS, bloom + god_rays);
                 result.rgb = (1 - bloom) * result + bloom;
                 return result;
             }

@@ -59,15 +59,11 @@ namespace UnityEngine.Rendering.Universal.Internal
         private ComputeShader _computeShader;
         private ComputeShader _arrayComputeShader;
 
-        private Material _bloomMaterial;
-
         /// <summary>
         /// Creates a new <c>BloomPass</c> instance.
         /// </summary>
         /// <param name="evt">The <c>RenderPassEvent</c> to use.</param>
         /// <param name="passCount">Number of mip passes</param>
-        /// <param name="samplingMaterial">The <c>Material</c> to use for downsampling quarter-resolution image with box filtering.</param>
-        /// <param name="copyColorMaterial">The <c>Material</c> to use for other downsampling options.</param>
         /// <seealso cref="RenderPassEvent"/>
         /// <seealso cref="Downsampling"/>
         public BloomPass(
@@ -75,16 +71,11 @@ namespace UnityEngine.Rendering.Universal.Internal
             int passCount
         )
         {
-            base.profilingSampler = new ProfilingSampler(nameof(BloomPass));
-
             renderPassEvent = evt;
-            base.useNativeRenderPass = false;
+            profilingSampler = new ProfilingSampler(nameof(BloomPass));
+            useNativeRenderPass = false;
 
             _passCount = passCount;
-
-            var bloomShader = Shader.Find("HoHo/Bloom");
-            _bloomMaterial = CoreUtils.CreateEngineMaterial(bloomShader);
-
             _computeShader = Resources.Load<ComputeShader>("Bloom");
             _arrayComputeShader = Resources.Load<ComputeShader>("BloomArray");
         }
@@ -94,8 +85,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// Configure the pass with the source and destination to execute on.
         /// </summary>
         /// <param name="source">Source render target.</param>
-        /// <param name="destination">Destination render target.</param>
-        /// <param name="downsampling">The downsampling method to use.</param>
         public void Setup(RTHandle source)
         {
             Source = source;
@@ -107,6 +96,7 @@ namespace UnityEngine.Rendering.Universal.Internal
             descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
             // TODO: Not a huge difference in performance between formats here surprisingly. Might want to check back.
+            // TODO: Keeping the alpha channel for now to render the god rays
             descriptor.colorFormat = RenderTextureFormat.Default;
             // descriptor.colorFormat = RenderTextureFormat.RGB565;
             // TODO: param
