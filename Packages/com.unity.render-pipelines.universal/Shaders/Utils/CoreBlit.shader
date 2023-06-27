@@ -296,7 +296,8 @@ Shader "Hidden/Universal/CoreBlit"
 
             TEXTURE2D_X(_GodRays);
             SAMPLER(sampler_GodRays);
-
+            SAMPLER(point_clamp_sampler_GodRays);
+            SAMPLER(linear_clamp_sampler_GodRays);
             float4 _GodRays_TexelSize;
 
             float4 FinalBlitHoHo(Varyings input): SV_Target
@@ -310,11 +311,18 @@ Shader "Hidden/Universal/CoreBlit"
                     1.0,
                     unity_StereoEyeIndex).rgb * _BloomIntensity;
 
-                half3 god_rays = SAMPLE_TEXTURE2D_X_LOD(_GodRays, sampler_GodRays, input.texcoord.xy, 0);
+                half3 god_rays = SAMPLE_TEXTURE2D_X_LOD(_GodRays, linear_clamp_sampler_GodRays, input.texcoord.xy, 0);
 
-                bloom = ApplyBlueNoise(input.positionCS, bloom + god_rays);
+                // half3 god_rays = SampleTexture2DBicubic(
+                //     TEXTURE2D_X_ARGS(_GodRays, sampler_GodRays),
+                //     input.texcoord.xy, _GodRays_TexelSize.zwxy,
+                //     1.0,
+                //     unity_StereoEyeIndex).rgb;
+
+                bloom = ApplyBlueNoise(input.positionCS, bloom + god_rays * .2);
                 result.rgb = (1 - bloom) * result + bloom;
-                return result;
+                // result.rgb += god_rays;
+                return float4(result.rgb, 1);
             }
             ENDHLSL
         }
