@@ -17,6 +17,8 @@ namespace UnityEngine.Rendering.Universal.Internal
         Material m_BlitHDRMaterial;
         RTHandle m_CameraTargetHandle;
 
+        private bool Bloom { get; set; }
+
         /// <summary>
         /// Creates a new <c>FinalBlitPass</c> instance.
         /// </summary>
@@ -59,8 +61,10 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// </summary>
         /// <param name="baseDescriptor"></param>
         /// <param name="colorHandle"></param>
-        public void Setup(RenderTextureDescriptor baseDescriptor, RTHandle colorHandle)
+        /// <param name="bloom">Should the final blit compose the bloom texture</param>
+        public void Setup(RenderTextureDescriptor baseDescriptor, RTHandle colorHandle, bool bloom = false)
         {
+            Bloom = bloom;
             m_Source = colorHandle;
         }
 
@@ -120,7 +124,7 @@ namespace UnityEngine.Rendering.Universal.Internal
 
                     Vector4 hdrOutputLuminanceParams;
                     UniversalRenderPipeline.GetHDROutputLuminanceParameters(tonemapping, out hdrOutputLuminanceParams);
-                    
+
                     HDROutputUtils.Operation hdrOperation = HDROutputUtils.Operation.None;
                     // If the HDRDebugView is on, we don't want the encoding
                     if (debugHandler == null || !debugHandler.HDRDebugViewIsActive(ref cameraData))
@@ -138,13 +142,13 @@ namespace UnityEngine.Rendering.Universal.Internal
                 }
                 else
                 {
-                    FinalBlitPass.ExecutePass(ref renderingData, blitMaterial, m_CameraTargetHandle, m_Source);
+                    FinalBlitPass.ExecutePass(ref renderingData, blitMaterial, m_CameraTargetHandle, m_Source, Bloom);
                     cameraData.renderer.ConfigureCameraTarget(m_CameraTargetHandle, m_CameraTargetHandle);
                 }
             }
         }
 
-        private static void ExecutePass(ref RenderingData renderingData, Material blitMaterial, RTHandle cameraTarget, RTHandle source)
+        private static void ExecutePass(ref RenderingData renderingData, Material blitMaterial, RTHandle cameraTarget, RTHandle source, bool bloom)
         {
             var cameraData = renderingData.cameraData;
             var cmd = renderingData.commandBuffer;
@@ -160,8 +164,16 @@ namespace UnityEngine.Rendering.Universal.Internal
                 loadAction = RenderBufferLoadAction.Load;
 #endif
 
-            // RenderingUtils.FinalBlit(cmd, ref cameraData, source, cameraTarget, loadAction, RenderBufferStoreAction.Store, blitMaterial, source.rt?.filterMode == FilterMode.Bilinear ? 1 : 0);
-            RenderingUtils.FinalBlit(cmd, ref cameraData, source, cameraTarget, loadAction, RenderBufferStoreAction.Store, blitMaterial, 23);
+            RenderingUtils.FinalBlit(
+                cmd,
+                ref cameraData,
+                source,
+                cameraTarget,
+                loadAction,
+                RenderBufferStoreAction.Store,
+                blitMaterial,
+                bloom ? 23 : 1
+            );
         }
 
         private class PassData
@@ -222,7 +234,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                         SetupHDROutput(data.blitMaterial, hdrOperation, data.hdrOutputLuminanceParams);
                     }
 
-                    ExecutePass(ref data.renderingData, data.blitMaterial, data.destination, data.source);
+                    ExecutePass(ref data.renderingData, data.blitMaterial, data.destination, data.source, Bloom);
                 });
             }
         }
