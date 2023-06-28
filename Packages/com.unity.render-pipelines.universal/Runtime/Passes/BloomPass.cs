@@ -20,6 +20,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         private static readonly int BloomColorCopyId = Shader.PropertyToID("_BloomColorCopy");
         private static readonly int BloomTextureId = Shader.PropertyToID("_BloomTexture");
 
+        private Material _bloomBlitMaterial;
 
         private RTHandle[] DownSampleMips
         {
@@ -56,9 +57,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         }
 
 
-        private ComputeShader _computeShader;
-        private ComputeShader _arrayComputeShader;
-
         /// <summary>
         /// Creates a new <c>BloomPass</c> instance.
         /// </summary>
@@ -67,17 +65,12 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// <seealso cref="RenderPassEvent"/>
         /// <seealso cref="Downsampling"/>
         public BloomPass(
-            RenderPassEvent evt,
-            int passCount
+            RenderPassEvent evt
         )
         {
             renderPassEvent = evt;
             profilingSampler = new ProfilingSampler(nameof(BloomPass));
             useNativeRenderPass = false;
-
-            _passCount = passCount;
-            _computeShader = Resources.Load<ComputeShader>("Bloom");
-            _arrayComputeShader = Resources.Load<ComputeShader>("BloomArray");
         }
 
 
@@ -85,9 +78,10 @@ namespace UnityEngine.Rendering.Universal.Internal
         /// Configure the pass with the source and destination to execute on.
         /// </summary>
         /// <param name="source">Source render target.</param>
-        public void Setup(RTHandle source)
+        public void Setup(RTHandle source, Material testMaterial)
         {
             Source = source;
+            _bloomBlitMaterial = testMaterial;
         }
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -95,19 +89,20 @@ namespace UnityEngine.Rendering.Universal.Internal
             var descriptor = renderingData.cameraData.cameraTargetDescriptor;
             descriptor.msaaSamples = 1;
             descriptor.depthBufferBits = 0;
+
             // TODO: Not a huge difference in performance between formats here surprisingly. Might want to check back.
-            // TODO: Keeping the alpha channel for now to render the god rays
+            // TODO: Using alpha channel as occlusion map for god rays
             descriptor.colorFormat = RenderTextureFormat.Default;
             // descriptor.colorFormat = RenderTextureFormat.RGB565;
-            // TODO: param
-            descriptor.width /= 4;
-            descriptor.height /= 4;
+
+            descriptor.width /= 2;
+            descriptor.height /= 2;
+
 
             var min = Mathf.Min(descriptor.width, descriptor.height);
-            _passCount = Mathf.Min(Mathf.FloorToInt(Mathf.Log(min, 2)) - 2, _passCount);
+            _passCount = Mathf.FloorToInt(Mathf.Log(min, 2)) - 1;
 
             ConfigureColorCopy(descriptor);
-
             ConfigureDownSampleMips(descriptor);
             ConfigureUpSampleMips(descriptor);
         }
@@ -193,52 +188,46 @@ namespace UnityEngine.Rendering.Universal.Internal
 
             ScriptableRenderer.SetRenderTarget(cmd, UpSampleMips[0], k_CameraTarget, clearFlag, clearColor);
 
-            var shader = Source.rt.volumeDepth == 2 ? _arrayComputeShader : _computeShader;
-
             using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.HoHoBloom)))
             {
-                Blitter.BlitCameraTexture(cmd, Source, _colorCopy, 0, true);
+                ColorCopyPass(ref cmd);
 
                 Shader.SetGlobalTexture(BloomColorCopyId, _colorCopy);
 
-                DownSamplePasses(shader, ref cmd);
-                UpSamplePasses(shader, ref cmd);
+                DownSamplePasses(ref cmd);
+                UpSamplePasses(ref cmd);
 
                 Shader.SetGlobalTexture(BloomTextureId, UpSampleMips[0]);
             }
         }
 
-        private void DownSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
+        private void ColorCopyPass(ref CommandBuffer cmd)
+        {
+            Blitter.BlitCameraTexture(
+                cmd,
+                Source,
+                _colorCopy,
+                RenderBufferLoadAction.DontCare,
+                RenderBufferStoreAction.Store,
+                _bloomBlitMaterial,
+                0
+            );
+        }
+
+        private void DownSamplePasses(ref CommandBuffer cmd)
         {
             var inputHandle = _colorCopy;
             for (var i = 0; i < _passCount; i++)
             {
                 var outputHandle = DownSampleMips[i];
 
-                var kernel = shader.FindKernel("down_sample");
-
-                var inputSize = new Vector4(
-                    1.0f / inputHandle.rt.width,
-                    1.0f / inputHandle.rt.height,
-                    inputHandle.rt.width,
-                    inputHandle.rt.height
-                );
-                cmd.SetComputeVectorParam(shader, "input_texel_size", inputSize);
-
-                var outputSize = new Vector4(
-                    1.0f / outputHandle.rt.width,
-                    1.0f / outputHandle.rt.height,
-                    outputHandle.rt.width,
-                    outputHandle.rt.height
-                );
-                cmd.SetComputeVectorParam(shader, "output_texel_size", outputSize);
-                cmd.SetComputeTextureParam(shader, kernel, "input", inputHandle);
-                cmd.SetComputeTextureParam(shader, kernel, "output", outputHandle);
-                cmd.DispatchCompute(
-                    shader,
-                    kernel,
-                    Mathf.CeilToInt(outputHandle.rt.width / 16.0f),
-                    Mathf.CeilToInt(outputHandle.rt.height / 16.0f),
+                Blitter.BlitCameraTexture(
+                    cmd,
+                    inputHandle,
+                    outputHandle,
+                    RenderBufferLoadAction.DontCare,
+                    RenderBufferStoreAction.Store,
+                    _bloomBlitMaterial,
                     1
                 );
 
@@ -247,46 +236,28 @@ namespace UnityEngine.Rendering.Universal.Internal
         }
 
 
-        private void UpSamplePasses(ComputeShader shader, ref CommandBuffer cmd)
+        private void UpSamplePasses(ref CommandBuffer cmd)
         {
             var inputHandle = DownSampleMips[^1];
             for (var i = _passCount - 2; i >= 0; i--)
             {
-                var kernel = shader.FindKernel("up_sample");
                 var previousSampleHandle = DownSampleMips[i];
                 var outputHandle = UpSampleMips[i];
-
-                var inputSize = new Vector4(
-                    1.0f / inputHandle.rt.width,
-                    1.0f / inputHandle.rt.height,
-                    inputHandle.rt.width,
-                    inputHandle.rt.height
-                );
-
-                var outputSize = new Vector4(
-                    1.0f / outputHandle.rt.width,
-                    1.0f / outputHandle.rt.height,
-                    outputHandle.rt.width,
-                    outputHandle.rt.height
-                );
-
-                cmd.SetComputeVectorParam(shader, "input_texel_size", inputSize);
-                cmd.SetComputeVectorParam(shader, "output_texel_size", outputSize);
-                cmd.SetComputeTextureParam(shader, kernel, "previous", previousSampleHandle);
-                cmd.SetComputeTextureParam(shader, kernel, "input", inputHandle);
-                cmd.SetComputeTextureParam(shader, kernel, "output", outputHandle);
-
-                cmd.DispatchCompute(
-                    shader,
-                    kernel,
-                    Mathf.CeilToInt(outputHandle.rt.width / 16.0f),
-                    Mathf.CeilToInt(outputHandle.rt.height / 16.0f),
-                    1
+                cmd.SetGlobalTexture("_PreviousTexture", previousSampleHandle);
+                Blitter.BlitCameraTexture(
+                    cmd,
+                    inputHandle,
+                    outputHandle,
+                    RenderBufferLoadAction.DontCare,
+                    RenderBufferStoreAction.Store,
+                    _bloomBlitMaterial,
+                    2
                 );
 
                 inputHandle = outputHandle;
             }
         }
+
 
         /// <inheritdoc/>
         public override void OnCameraCleanup(CommandBuffer cmd)

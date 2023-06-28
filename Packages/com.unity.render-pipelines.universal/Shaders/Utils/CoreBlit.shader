@@ -299,29 +299,40 @@ Shader "Hidden/Universal/CoreBlit"
 
             float4 _GodRays_TexelSize;
 
+            float3 SoftAdd(float3 a, float3 b)
+            {
+                // return a + b;
+                return (1 - a) * b + a;
+            }
+
             float4 FinalBlitHoHo(Varyings input): SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
                 float4 result = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_LinearClamp, input.texcoord.xy,
                                                        _BlitMipLevel);
-                half3 bloom = SampleTexture2DBicubic(
+
+                // Bicubic sampling let's us get to 1/4 for the initial color copy pass where the biggest hit comes from
+                const half3 bloom = SampleTexture2DBicubic(
                     TEXTURE2D_X_ARGS(_BloomTexture, sampler_BloomTexture),
                     input.texcoord.xy, _BloomTexture_TexelSize.zwxy,
                     1.0,
                     unity_StereoEyeIndex).rgb * _BloomIntensity;
 
-                // half3 god_rays = SAMPLE_TEXTURE2D_X_LOD(_GodRays, sampler_GodRays, input.texcoord.xy, 0);
+                // const half3 god_rays = SAMPLE_TEXTURE2D_X_LOD(_GodRays, sampler_GodRays, input.texcoord.xy, 0);
+                // God rays seem to be fine without bicubic. Keeping here in-case obvious need in future
                 half3 god_rays = SampleTexture2DBicubic(
                     TEXTURE2D_X_ARGS(_GodRays, sampler_GodRays),
                     input.texcoord.xy, _GodRays_TexelSize.zwxy,
                     1.0,
                     unity_StereoEyeIndex).rgb;
 
-                // god_rays *= god_rays * 2;
 
-                // bloom = ApplyBlueNoise(input.positionCS, bloom + god_rays);
-                half3 volumetric_lighting = ApplyBlueNoise(input.positionCS, god_rays);
-                result.rgb = (1 - volumetric_lighting) * result + volumetric_lighting;
+                half3 volumetric_lighting = SoftAdd(god_rays, bloom);
+                // half3 volumetric_lighting = bloom;
+                volumetric_lighting = ApplyBlueNoise(input.positionCS, volumetric_lighting);
+                result.rgb = SoftAdd(result.rgb, volumetric_lighting);
+                // result.rgb = ApplyBlueNoise(input.positionCS, result.rgb);
+
                 return result;
             }
             ENDHLSL
