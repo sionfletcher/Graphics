@@ -150,6 +150,7 @@ namespace UnityEngine.Rendering.Universal
         Material m_BlitHDRMaterial = null;
         Material m_CopyDepthMaterial = null;
         Material m_SamplingMaterial = null;
+        Material m_BloomBlitMaterial = null;
         Material m_StencilDeferredMaterial = null;
         Material m_CameraMotionVecMaterial = null;
         Material m_ObjectMotionVecMaterial = null;
@@ -177,6 +178,7 @@ namespace UnityEngine.Rendering.Universal
             m_BlitHDRMaterial = CoreUtils.CreateEngineMaterial(data.shaders.blitHDROverlay);
             m_CopyDepthMaterial = CoreUtils.CreateEngineMaterial(data.shaders.copyDepthPS);
             m_SamplingMaterial = CoreUtils.CreateEngineMaterial(data.shaders.samplingPS);
+            m_BloomBlitMaterial = CoreUtils.CreateEngineMaterial(Shader.Find("HoHo/BloomBlit"));
             m_StencilDeferredMaterial = CoreUtils.CreateEngineMaterial(data.shaders.stencilDeferredPS);
             m_CameraMotionVecMaterial = CoreUtils.CreateEngineMaterial(data.shaders.cameraMotionVector);
             m_ObjectMotionVecMaterial = CoreUtils.CreateEngineMaterial(data.shaders.objectMotionVector);
@@ -295,7 +297,7 @@ namespace UnityEngine.Rendering.Universal
             m_CopyColorPass = new CopyColorPass(RenderPassEvent.AfterRenderingOpaques, m_SamplingMaterial, m_BlitMaterial);
 
             // TODO - render pass event set to after skybox here, purely for the editor scene view.
-            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingSkybox, 10);
+            m_BloomPass = new BloomPass(RenderPassEvent.AfterRenderingSkybox);
 #if ADAPTIVE_PERFORMANCE_2_1_0_OR_NEWER
             if (needTransparencyPass)
 #endif
@@ -1070,7 +1072,7 @@ namespace UnityEngine.Rendering.Universal
 
             if(renderingData.cameraData.requiresBloomTexture)
             {
-                m_BloomPass.Setup(m_ActiveCameraColorAttachment);
+                m_BloomPass.Setup(m_ActiveCameraColorAttachment, m_BloomBlitMaterial);
                 EnqueuePass(m_BloomPass);
             }
 
