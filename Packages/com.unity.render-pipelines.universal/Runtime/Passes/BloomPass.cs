@@ -92,12 +92,8 @@ namespace UnityEngine.Rendering.Universal.Internal
 
             // TODO: Not a huge difference in performance between formats here surprisingly. Might want to check back.
             // TODO: Using alpha channel as occlusion map for god rays
-            descriptor.colorFormat = RenderTextureFormat.Default;
-            // descriptor.colorFormat = RenderTextureFormat.RGB565;
-
-            descriptor.width /= 2;
-            descriptor.height /= 2;
-
+            descriptor.width /= 2; // TODO - Quality Settings
+            descriptor.height /= 2; // TODO - Quality Settings
 
             var min = Mathf.Min(descriptor.width, descriptor.height);
             _passCount = Mathf.FloorToInt(Mathf.Log(min, 2)) - 1;
@@ -109,6 +105,7 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private void ConfigureColorCopy(RenderTextureDescriptor descriptor)
         {
+            descriptor.colorFormat = RenderTextureFormat.ARGB1555;
             RenderingUtils.ReAllocateIfNeeded(
                 ref _colorCopy,
                 descriptor,
@@ -186,7 +183,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 cmd.SetFoveatedRenderingMode(FoveatedRenderingMode.Disabled);
 #endif
 
-            ScriptableRenderer.SetRenderTarget(cmd, UpSampleMips[0], k_CameraTarget, clearFlag, clearColor);
+            // ScriptableRenderer.SetRenderTarget(cmd, UpSampleMips[0], k_CameraTarget, clearFlag, clearColor);
 
             using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.HoHoBloom)))
             {
