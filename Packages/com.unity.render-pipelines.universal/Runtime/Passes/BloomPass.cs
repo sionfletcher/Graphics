@@ -1,15 +1,11 @@
 ﻿using System;
-using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 namespace UnityEngine.Rendering.Universal.Internal
 {
-    /// <summary>
-    /// Copy the given color buffer to the given destination color buffer.
-    ///
-    /// You can use this pass to copy a color buffer to the destination,
-    /// so you can use it later in rendering. For example, you can copy
-    /// the opaque texture to use it for distortion effects.
-    /// </summary>
+    /**
+     * TODO: This render feature ends at 1/4 screen size. Keeping it here for now, but might want
+     * TODO: to take this up to 1/2 if the aliasing is too apparent and there's budget
+     */
     public class BloomPass : ScriptableRenderPass
     {
         private int _passCount;
@@ -20,7 +16,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         private static readonly int BloomColorCopyId = Shader.PropertyToID("_BloomColorCopy");
         private static readonly int BloomTextureId = Shader.PropertyToID("_BloomTexture");
 
-        private Material _bloomBlitMaterial;
+        private Material _volumetricLightingMaterial;
 
         private RTHandle[] DownSampleMips
         {
@@ -57,13 +53,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         }
 
 
-        /// <summary>
-        /// Creates a new <c>BloomPass</c> instance.
-        /// </summary>
-        /// <param name="evt">The <c>RenderPassEvent</c> to use.</param>
-        /// <param name="passCount">Number of mip passes</param>
-        /// <seealso cref="RenderPassEvent"/>
-        /// <seealso cref="Downsampling"/>
         public BloomPass(
             RenderPassEvent evt
         )
@@ -73,15 +62,10 @@ namespace UnityEngine.Rendering.Universal.Internal
             useNativeRenderPass = false;
         }
 
-
-        /// <summary>
-        /// Configure the pass with the source and destination to execute on.
-        /// </summary>
-        /// <param name="source">Source render target.</param>
-        public void Setup(RTHandle source, Material testMaterial)
+        public void Setup(RTHandle source, Material material)
         {
             Source = source;
-            _bloomBlitMaterial = testMaterial;
+            _volumetricLightingMaterial = material;
         }
 
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -161,7 +145,6 @@ namespace UnityEngine.Rendering.Universal.Internal
             }
         }
 
-        /// <inheritdoc/>
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             if (renderingData.cameraData.camera.cameraType == CameraType.Preview) return;
@@ -175,15 +158,12 @@ namespace UnityEngine.Rendering.Universal.Internal
                 Source = renderingData.cameraData.renderer.cameraColorTargetHandle;
             }
 
-            // TODO - test with / without foveation
 #if ENABLE_VR && ENABLE_XR_MODULE
             var xrEnabled = renderingData.cameraData.xr.enabled;
             var disableFoveatedRenderingForPass = xrEnabled && renderingData.cameraData.xr.supportsFoveatedRendering;
             if (disableFoveatedRenderingForPass)
                 cmd.SetFoveatedRenderingMode(FoveatedRenderingMode.Disabled);
 #endif
-
-            // ScriptableRenderer.SetRenderTarget(cmd, UpSampleMips[0], k_CameraTarget, clearFlag, clearColor);
 
             using (new ProfilingScope(cmd, ProfilingSampler.Get(URPProfileId.HoHoBloom)))
             {
@@ -196,6 +176,8 @@ namespace UnityEngine.Rendering.Universal.Internal
 
                 Shader.SetGlobalTexture(BloomTextureId, UpSampleMips[0]);
             }
+
+
         }
 
         private void ColorCopyPass(ref CommandBuffer cmd)
@@ -206,7 +188,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 _colorCopy,
                 RenderBufferLoadAction.DontCare,
                 RenderBufferStoreAction.Store,
-                _bloomBlitMaterial,
+                _volumetricLightingMaterial,
                 0
             );
         }
@@ -224,7 +206,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                     outputHandle,
                     RenderBufferLoadAction.DontCare,
                     RenderBufferStoreAction.Store,
-                    _bloomBlitMaterial,
+                    _volumetricLightingMaterial,
                     1
                 );
 
@@ -247,7 +229,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                     outputHandle,
                     RenderBufferLoadAction.DontCare,
                     RenderBufferStoreAction.Store,
-                    _bloomBlitMaterial,
+                    _volumetricLightingMaterial,
                     2
                 );
 
@@ -256,7 +238,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         }
 
 
-        /// <inheritdoc/>
         public override void OnCameraCleanup(CommandBuffer cmd)
         {
             if (cmd == null)
