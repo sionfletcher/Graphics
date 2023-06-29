@@ -299,6 +299,8 @@ Shader "Hidden/Universal/CoreBlit"
 
             float4 _GodRays_TexelSize;
 
+            #pragma multi_compile _ GOD_RAYS_ON
+
             float3 SoftAdd(float3 a, float3 b)
             {
                 // return a + b;
@@ -312,12 +314,13 @@ Shader "Hidden/Universal/CoreBlit"
                                                        _BlitMipLevel);
 
                 // Bicubic sampling let's us get to 1/4 for the initial color copy pass where the biggest hit comes from
-                const half3 bloom = SampleTexture2DBicubic(
+                half3 volumetric_lighting = SampleTexture2DBicubic(
                     TEXTURE2D_X_ARGS(_BloomTexture, sampler_BloomTexture),
                     input.texcoord.xy, _BloomTexture_TexelSize.zwxy,
                     1.0,
                     unity_StereoEyeIndex).rgb * _BloomIntensity;
 
+                #if GOD_RAYS_ON
                 // const half3 god_rays = SAMPLE_TEXTURE2D_X_LOD(_GodRays, sampler_GodRays, input.texcoord.xy, 0);
                 // God rays seem to be fine without bicubic. Keeping here in-case obvious need in future
                 half3 god_rays = SampleTexture2DBicubic(
@@ -325,9 +328,10 @@ Shader "Hidden/Universal/CoreBlit"
                     input.texcoord.xy, _GodRays_TexelSize.zwxy,
                     1.0,
                     unity_StereoEyeIndex).rgb;
+                volumetric_lighting = SoftAdd(god_rays, volumetric_lighting);
+                #endif
 
 
-                half3 volumetric_lighting = SoftAdd(god_rays, bloom);
                 // half3 volumetric_lighting = bloom;
                 volumetric_lighting = ApplyBlueNoise(input.positionCS, volumetric_lighting);
                 result.rgb = SoftAdd(result.rgb, volumetric_lighting);
