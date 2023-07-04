@@ -24,6 +24,7 @@ namespace UnityEngine.Rendering.Universal.Internal
 
         private static readonly int BloomColorCopyId = Shader.PropertyToID("_BloomColorCopy");
         private static readonly int BloomTextureId = Shader.PropertyToID("_BloomTexture");
+        private static readonly int BloomTextureXRId = Shader.PropertyToID("_BloomTexture_XR");
 
         private Material _volumetricLightingMaterial;
 
@@ -182,6 +183,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 UpSamplePasses(ref cmd);
 
                 Shader.SetGlobalTexture(BloomTextureId, UpSampleMips[0]);
+                Shader.SetGlobalTexture(BloomTextureXRId, UpSampleMips[0]);
             }
 
 

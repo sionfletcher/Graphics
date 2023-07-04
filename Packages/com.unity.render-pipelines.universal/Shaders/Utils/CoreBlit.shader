@@ -294,10 +294,10 @@ Shader "Hidden/Universal/CoreBlit"
             float4 _BloomTexture_TexelSize;
             float _BloomIntensity;
 
-            TEXTURE2D_X(_GodRays);
-            SAMPLER(sampler_GodRays);
+            TEXTURE2D_X(_GodRaysTexture);
+            SAMPLER(sampler_GodRaysTexture);
 
-            float4 _GodRays_TexelSize;
+            float4 _GodRaysTexture_TexelSize;
 
             #pragma multi_compile _ GOD_RAYS_ON
 
@@ -320,16 +320,14 @@ Shader "Hidden/Universal/CoreBlit"
                     1.0,
                     unity_StereoEyeIndex).rgb * _BloomIntensity;
 
-                #if GOD_RAYS_ON
-                // const half3 god_rays = SAMPLE_TEXTURE2D_X_LOD(_GodRays, sampler_GodRays, input.texcoord.xy, 0);
-                // God rays seem to be fine without bicubic. Keeping here in-case obvious need in future
+                // #if GOD_RAYS_ON
                 half3 god_rays = SampleTexture2DBicubic(
-                    TEXTURE2D_X_ARGS(_GodRays, sampler_GodRays),
-                    input.texcoord.xy, _GodRays_TexelSize.zwxy,
+                    TEXTURE2D_X_ARGS(_GodRaysTexture, sampler_GodRaysTexture),
+                    input.texcoord.xy, _GodRaysTexture_TexelSize.zwxy,
                     1.0,
                     unity_StereoEyeIndex).rgb;
                 volumetric_lighting = SoftAdd(god_rays, volumetric_lighting);
-                #endif
+                // #endif
 
 
                 // half3 volumetric_lighting = bloom;
