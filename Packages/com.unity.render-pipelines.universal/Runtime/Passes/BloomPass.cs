@@ -3,8 +3,17 @@
 namespace UnityEngine.Rendering.Universal.Internal
 {
     /**
-     * TODO: This render feature ends at 1/4 screen size. Keeping it here for now, but might want
-     * TODO: to take this up to 1/2 if the aliasing is too apparent and there's budget
+     * TODO
+     *
+     * The down / up-sample chain here finishes at 1/4 screen size. There is noticeable aliasing on final blit
+     * regardless of the bi-cubic sampling.
+     *
+     * There is a big hit to perf rendering @ 70% screen size on the Quest 2
+     *
+     * 1/4 = ~650us
+     * 1/2 = ~ 1500us
+     *
+     * Can always bump this up, if the budget allows. Leaving at 1/4 for now.
      */
     public class BloomPass : ScriptableRenderPass
     {
@@ -103,7 +112,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             // var downSampleMips
             descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
-            descriptor.enableRandomWrite = true;
 
             var width = descriptor.width;
             var height = descriptor.height;
@@ -128,7 +136,6 @@ namespace UnityEngine.Rendering.Universal.Internal
         private void ConfigureUpSampleMips(RenderTextureDescriptor descriptor)
         {
             descriptor.colorFormat = RenderTextureFormat.RGB111110Float;
-            descriptor.enableRandomWrite = true;
 
             for (var i = 0; i < _passCount - 1; i++)
             {
